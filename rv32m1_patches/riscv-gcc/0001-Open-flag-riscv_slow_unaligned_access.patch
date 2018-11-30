@@ -1,0 +1,33 @@
+From b03f080ba1046378e813cbf9b7bbd479b242c164 Mon Sep 17 00:00:00 2001
+From: Jason Yu <xuzj03@gmail.com>
+Date: Fri, 30 Nov 2018 00:41:26 +0800
+Subject: [PATCH] Open flag riscv_slow_unaligned_access
+
+ - Open the control flag to handle unaligned access.
+---
+ gcc/config/riscv/riscv.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/gcc/config/riscv/riscv.c b/gcc/config/riscv/riscv.c
+index 78828f8b819..8f0485508ec 100644
+--- a/gcc/config/riscv/riscv.c
++++ b/gcc/config/riscv/riscv.c
+@@ -4992,11 +4992,13 @@ riscv_option_override (void)
+   /* Use -mtune's setting for slow_unaligned_access, even when optimizing
+      for size.  For architectures that trap and emulate unaligned accesses,
+      the performance cost is too great, even for -Os.  */
+-/*
++
++#if 1
+   riscv_slow_unaligned_access = (cpu->tune_info->slow_unaligned_access
+ 				 || TARGET_STRICT_ALIGN);
+-*/
++#else
+   riscv_slow_unaligned_access = 0;
++#endif
+   /* If the user hasn't specified a branch cost, use the processor's
+      default.  */
+   if (riscv_branch_cost == 0)
+-- 
+2.17.0
+
