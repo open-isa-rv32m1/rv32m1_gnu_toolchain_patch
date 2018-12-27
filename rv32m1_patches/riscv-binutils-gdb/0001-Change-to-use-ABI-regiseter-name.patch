@@ -1,0 +1,228 @@
+From 31932d7f70cff2ff03ed0d6a7fdd5a54677a87c5 Mon Sep 17 00:00:00 2001
+From: Jason Yu <xuzj03@gmail.com>
+Date: Tue, 25 Dec 2018 15:41:23 +0800
+Subject: [PATCH] Change to use ABI regiseter name
+
+ - Change to use ABI regiseter instead of
+   x0-x31
+
+Signed-off-by: Jason Yu <xuzj03@gmail.com>
+---
+ gdb/riscv-tdep.c | 162 ++++++++++++++++++++++++-----------------------
+ 1 file changed, 83 insertions(+), 79 deletions(-)
+
+diff --git a/gdb/riscv-tdep.c b/gdb/riscv-tdep.c
+index 7522cfaa52..a0ddf14164 100644
+--- a/gdb/riscv-tdep.c
++++ b/gdb/riscv-tdep.c
+@@ -75,17 +75,41 @@ struct riscv_frame_cache
+   struct trad_frame_saved_reg *saved_regs;
+ };
+ 
+-static const char * const riscv_gdb_reg_names[RISCV_LAST_FP_REGNUM + 1] =
++static const char * const riscv_gdb_reg_names[RISCV_PC_REGNUM + 1] =
+ {
+-  "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",
+-  "x8",  "x9",  "x10", "x11", "x12", "x13", "x14", "x15",
+-  "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
+-  "x24", "x25", "x26", "x27", "x28", "x29", "x30", "x31",
++  "zero",
++  "ra",
++  "sp",
++  "gp",
++  "tp",
++  "t0",
++  "t1",
++  "t2",
++  "s0/fp",
++  "s1",
++  "a0",
++  "a1",
++  "a2",
++  "a3",
++  "a4",
++  "a5",
++  "a6",
++  "a7",
++  "s2",
++  "s3",
++  "s4",
++  "s5",
++  "s6",
++  "s7",
++  "s8",
++  "s9",
++  "s10",
++  "s11",
++  "t3",
++  "t4",
++  "t5",
++  "t6",
+   "pc",
+-  "f0",  "f1",  "f2",  "f3",  "f4",  "f5",  "f6",  "f7",
+-  "f8",  "f9",  "f10", "f11", "f12", "f13", "f14", "f15",
+-  "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23",
+-  "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31",
+ };
+ 
+ struct register_alias
+@@ -96,74 +120,52 @@ struct register_alias
+ 
+ static const struct register_alias riscv_register_aliases[] =
+ {
+-  { "zero", 0 },
+-  { "ra", 1 },
+-  { "sp", 2 },
+-  { "gp", 3 },
+-  { "tp", 4 },
+-  { "t0", 5 },
+-  { "t1", 6 },
+-  { "t2", 7 },
+-  { "fp", 8 },
+-  { "s0", 8 },
+-  { "s1", 9 },
+-  { "a0", 10 },
+-  { "a1", 11 },
+-  { "a2", 12 },
+-  { "a3", 13 },
+-  { "a4", 14 },
+-  { "a5", 15 },
+-  { "a6", 16 },
+-  { "a7", 17 },
+-  { "s2", 18 },
+-  { "s3", 19 },
+-  { "s4", 20 },
+-  { "s5", 21 },
+-  { "s6", 22 },
+-  { "s7", 23 },
+-  { "s8", 24 },
+-  { "s9", 25 },
+-  { "s10", 26 },
+-  { "s11", 27 },
+-  { "t3", 28 },
+-  { "t4", 29 },
+-  { "t5", 30 },
+-  { "t6", 31 },
++    { "x0", 0 },
++    { "x1", 1 },
++    { "x2", 2 },
++    { "x3", 3 },
++    { "x4", 4 },
++    { "x5", 5 },
++    { "x6", 6 },
++    { "x7", 7 },
++    { "x8", 8 },
++    { "fp", 8 },
++    { "x9", 9 },
++    { "x10", 10 },
++    { "x11", 11 },
++    { "x12", 12 },
++    { "x13", 13 },
++    { "x14", 14 },
++    { "x15", 15 },
++    { "x16", 16 },
++    { "x17", 17 },
++    { "x18", 18 },
++    { "x19", 19 },
++    { "x20", 20 },
++    { "x21", 21 },
++    { "x22", 22 },
++    { "x23", 23 },
++    { "x24", 24 },
++    { "x25", 25 },
++    { "x26", 26 },
++    { "x27", 27 },
++    { "x28", 28 },
++    { "x29", 29 },
++    { "x30", 30 },
++    { "x31", 31 },
+   /* pc is 32.  */
+-  { "ft0", 33 },
+-  { "ft1", 34 },
+-  { "ft2", 35 },
+-  { "ft3", 36 },
+-  { "ft4", 37 },
+-  { "ft5", 38 },
+-  { "ft6", 39 },
+-  { "ft7", 40 },
+-  { "fs0", 41 },
+-  { "fs1", 42 },
+-  { "fa0", 43 },
+-  { "fa1", 44 },
+-  { "fa2", 45 },
+-  { "fa3", 46 },
+-  { "fa4", 47 },
+-  { "fa5", 48 },
+-  { "fa6", 49 },
+-  { "fa7", 50 },
+-  { "fs2", 51 },
+-  { "fs3", 52 },
+-  { "fs4", 53 },
+-  { "fs5", 54 },
+-  { "fs6", 55 },
+-  { "fs7", 56 },
+-  { "fs8", 57 },
+-  { "fs9", 58 },
+-  { "fs10", 59 },
+-  { "fs11", 60 },
+-  { "ft8", 61 },
+-  { "ft9", 62 },
+-  { "ft10", 63 },
+-  { "ft11", 64 },
+ #define DECLARE_CSR(name, num) { #name, (num) + 65 },
+-#include "opcode/riscv-opc.h"
++  DECLARE_CSR(ustatus, 0x0000)
++  DECLARE_CSR(utvec, 0x0005)
++  DECLARE_CSR(uhartid, 0x0014)
++  DECLARE_CSR(uepc, 0x0041)
++  DECLARE_CSR(ucause, 0x0042)
++  DECLARE_CSR(mstatus, 0x0300)
++  DECLARE_CSR(mtvec, 0x0305)
++  DECLARE_CSR(mepc, 0x0341)
++  DECLARE_CSR(mcause, 0x0342)
++  DECLARE_CSR(mhartid, 0x0f14)
++  DECLARE_CSR(privlv, 0x0c10)
+ #undef DECLARE_CSR
+ };
+ 
+@@ -275,7 +277,7 @@ register_name (struct gdbarch *gdbarch,
+ 	  return riscv_register_aliases[i].name;
+     }
+ 
+-  if (regnum >= RISCV_ZERO_REGNUM && regnum <= RISCV_LAST_FP_REGNUM)
++  if (regnum >= RISCV_ZERO_REGNUM && regnum <= RISCV_PC_REGNUM)
+       return riscv_gdb_reg_names[regnum];
+ 
+   if (regnum >= RISCV_FIRST_CSR_REGNUM && regnum <= RISCV_LAST_CSR_REGNUM)
+@@ -558,15 +560,16 @@ riscv_print_register_formatted (struct ui_file *file, struct frame_info *frame,
+       /* Integer type.  */
+       int offset, size;
+       unsigned long long d;
++      int prefer_alias = regnum >= RISCV_FIRST_CSR_REGNUM;
+ 
+       if (!deprecated_frame_register_read (frame, regnum, raw_buffer))
+ 	{
+ 	  fprintf_filtered (file, "%-15s[Invalid]\n",
+-			    register_name (gdbarch, regnum, 1));
++			    register_name (gdbarch, regnum, prefer_alias));
+ 	  return;
+ 	}
+ 
+-      fprintf_filtered (file, "%-15s", register_name (gdbarch, regnum, 1));
++      fprintf_filtered (file, "%-15s", register_name (gdbarch, regnum, prefer_alias));
+       if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_BIG)
+ 	offset = register_size (gdbarch, regnum) - register_size (gdbarch, regnum);
+       else
+@@ -766,7 +769,8 @@ riscv_print_registers_info (struct gdbarch    *gdbarch,
+     {
+       /* Print one specified register.  */
+       gdb_assert (regnum <= RISCV_LAST_REGNUM);
+-      if (NULL == register_name (gdbarch, regnum, 1))
++      int prefer_alias = regnum >= RISCV_FIRST_CSR_REGNUM;
++      if (NULL == register_name (gdbarch, regnum, prefer_alias))
+         error (_("Not a valid register for the current processor type"));
+       riscv_print_register_formatted (file, frame, regnum);
+       return;
+-- 
+2.17.0
+
