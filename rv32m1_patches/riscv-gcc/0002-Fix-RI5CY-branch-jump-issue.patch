@@ -1,0 +1,123 @@
+From ffaeda364f11a8cf3df2f952ed114a211c0dbbb9 Mon Sep 17 00:00:00 2001
+From: Jason Yu <xuzj03@gmail.com>
+Date: Tue, 18 Dec 2018 17:38:56 +0800
+Subject: [PATCH 2/2] Fix RI5CY branch jump issue
+
+ - The issue is similar with: https://github.com/pulp-platform/riscv/issues/58
+
+ - The scenario is like this
+
+ 5a2:   30472703 lw a4,772(a4) // load data from address 0x4002_c304
+ 5a6:   f81630e3 p.bneimm   a2,1,526 //a2==1, should jump to 526
+ 5aa:   8321 srli   a4,a4,0x8
+
+ The first instruction load data from flash or peripheral registers,
+ this costs long time. The second instruction is
+ conditional branch instruction, in this case, the condition is met
+ and the core should jump to 0x526. The third instruction depends on
+ the result of the first instruction.
+
+ The key points to reproduce this issue:
+ 1. Data fetch must be slow, data fetch should not finished when decoding
+    the third instruction.
+ 2. The third instruction depends on the result of the first instruction.
+
+ - The workaround is add `nop` before branch jump
+
+Signed-off-by: Jason Yu <xuzj03@gmail.com>
+---
+ gcc/config/riscv/riscv.c | 69 +++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 68 insertions(+), 1 deletion(-)
+
+diff --git a/gcc/config/riscv/riscv.c b/gcc/config/riscv/riscv.c
+index cc80d4590b8..521da9e3431 100644
+--- a/gcc/config/riscv/riscv.c
++++ b/gcc/config/riscv/riscv.c
+@@ -5935,9 +5935,74 @@ riscv_reorg_loops (void)
+   df_analyze ();
+ }
+ 
++static bool riscv_reg_used_in_insn(rtx_insn *insn, unsigned int regno)
++{
++  subrtx_iterator::array_type array;
+ 
+-static void riscv_patch_generated_code()
++  FOR_EACH_SUBRTX (iter, array, INSN_P (insn) ? PATTERN (insn) : insn, NONCONST)
++  {
++    const_rtx x = *iter;
++    if (REG_P (x) && (regno == REGNO(x)))
++    {
++      return true;
++    }
++  }
++
++  return false;
++}
++
++static void riscv_patch_branch_code()
++{
++  /* Look for pattern
++        1) set RegW = Mem()
++        2) JumpCond
++    FallThrough:  3) RegW used
++
++    If found insert a nop after  1)
++  */
++  basic_block bb;
++
++  FOR_EACH_BB_FN (bb, cfun) {
++    basic_block TargetBB;
++    rtx_insn *end, *head = BB_HEAD (bb);
++    rtx_insn *insn, *prev_insn;
++    rtx jump_insn;
++    rtx RegW;
++    edge e;
++    edge_iterator ei;
++
++    for (insn = BB_END (bb); ; insn = PREV_INSN (insn)) {
++      if (NONDEBUG_INSN_P (insn) || (insn == head)) break;
++    }
++    if (!JUMP_P(insn)) continue;
++    jump_insn = PATTERN(insn);
++    if (!(GET_CODE (jump_insn) == SET && GET_CODE (SET_SRC(jump_insn)) == IF_THEN_ELSE)) continue;
++    prev_insn = prev_nonnote_nondebug_insn(insn);
++    if (prev_insn == NULL_RTX || !INSN_P(prev_insn)) continue;
++    RegW = SET_DEST(PATTERN(prev_insn));
++    if (!REG_P(RegW) || !MEM_P(SET_SRC(PATTERN(prev_insn)))) continue;
++
++    TargetBB = 0;
++    FOR_EACH_EDGE (e, ei, bb->succs) {
++      if (e->flags & EDGE_FALLTHRU) {
++        TargetBB = e->dest; break;
++      }
++    }
++    if (!TargetBB) continue;
++
++    end = BB_END(TargetBB);
++    for (insn = BB_HEAD(TargetBB); ; insn = NEXT_INSN (insn)) {
++      if ((INSN_P(insn)) || (insn == end)) break;
++    }
+ 
++    if ((insn == NULL_RTX) || (insn == end)) continue;
++    if (!riscv_reg_used_in_insn(insn, REGNO(RegW))) continue;
++
++    prev_insn = emit_insn_after (gen_forced_nop (), prev_insn);
++  }
++}
++
++static void riscv_patch_generated_code()
+ {
+ 	/* Look for pattern
+ 				1) set RegW = Mem()
+@@ -6010,6 +6075,8 @@ riscv_reorg (void)
+ 
+   if (Pulp_Cpu==PULP_GAP8) riscv_patch_generated_code();
+ 
++  if ((Pulp_Cpu>=PULP_V2) && (Pulp_Cpu!=PULP_GAP8)) riscv_patch_branch_code();
++
+   df_finish_pass (false);
+ }
+ 
+-- 
+2.17.0
+

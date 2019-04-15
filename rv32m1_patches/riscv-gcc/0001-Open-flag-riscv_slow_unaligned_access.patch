@@ -1,7 +1,7 @@
-From 4a485e17ac9cf1083e981eb06d644ee255500480 Mon Sep 17 00:00:00 2001
+From a240eefad3c001caacc987c6b3df54268a3269bc Mon Sep 17 00:00:00 2001
 From: Jason Yu <xuzj03@gmail.com>
 Date: Fri, 30 Nov 2018 00:41:26 +0800
-Subject: [PATCH] Open flag riscv_slow_unaligned_access
+Subject: [PATCH 1/2] Open flag riscv_slow_unaligned_access
 
  - The RV32M1 does not support 16-bit unaligned write.
    For a packed structure, the store half-word should
@@ -11,7 +11,7 @@ Subject: [PATCH] Open flag riscv_slow_unaligned_access
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/gcc/config/riscv/riscv.c b/gcc/config/riscv/riscv.c
-index 78828f8b819..8f0485508ec 100644
+index 5fd9835c78e..cc80d4590b8 100644
 --- a/gcc/config/riscv/riscv.c
 +++ b/gcc/config/riscv/riscv.c
 @@ -4992,11 +4992,13 @@ riscv_option_override (void)
