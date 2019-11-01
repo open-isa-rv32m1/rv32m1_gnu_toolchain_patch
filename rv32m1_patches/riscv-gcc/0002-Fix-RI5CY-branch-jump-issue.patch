@@ -1,7 +1,7 @@
-From ece50f5000c0820f8b4a09502b10e2af2a78ea58 Mon Sep 17 00:00:00 2001
+From 1cd397a69c43040687efba5c11ff6a0746474476 Mon Sep 17 00:00:00 2001
 From: Jason Yu <xuzj03@gmail.com>
 Date: Tue, 18 Dec 2018 17:38:56 +0800
-Subject: [PATCH 2/3] Fix RI5CY branch jump issue
+Subject: [PATCH 2/4] Fix RI5CY branch jump issue
 
  - The issue is similar with: https://github.com/pulp-platform/riscv/issues/58
 
@@ -119,5 +119,5 @@ index cc80d4590b8..521da9e3431 100644
  }
  
 -- 
-2.17.0
+2.17.1
 

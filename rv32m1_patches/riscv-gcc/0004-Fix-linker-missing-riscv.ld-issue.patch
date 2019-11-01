@@ -1,0 +1,45 @@
+From e7de683ea0586e0c1aafb0a1d60f9a1c791df228 Mon Sep 17 00:00:00 2001
+From: Jason Yu <zejiang.yu@nxp.com>
+Date: Fri, 1 Nov 2019 09:33:05 +0000
+Subject: [PATCH 4/4] Fix linker missing riscv.ld issue
+
+ - The issue is https://github.com/pulp-platform/pulpino/issues/240
+ - The root cause is, `LINK_SPEC` defined `-dT riscv.ld`, which means
+   that if the `T` is not defined in link command, then use `-dT riscv.ld`.
+   The workaround is user define `-dT=${CMAKE_CURRENT_LIST_DIR}/empty-file.ld`
+   to override the default setting.
+ - This patch removes the flag, then the workaround is not necessary.
+
+Signed-off-by: Jason Yu <zejiang.yu@nxp.com>
+---
+ gcc/config/riscv/elf.h   | 1 -
+ gcc/config/riscv/riscv.h | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/gcc/config/riscv/elf.h b/gcc/config/riscv/elf.h
+index d440b2a14d2..b78344b0ed4 100644
+--- a/gcc/config/riscv/elf.h
++++ b/gcc/config/riscv/elf.h
+@@ -19,7 +19,6 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #define LINK_SPEC "\
+ -melf" XLEN_SPEC "lriscv \
+-%{!T:-dT riscv.ld} \
+ %{mchip=*:--mchip=%*} \
+ %{march=*:--march=%*} \
+ %{mL2=*:--mL2=%*} \
+diff --git a/gcc/config/riscv/riscv.h b/gcc/config/riscv/riscv.h
+index bd75b7d3c44..ed7203c0fa4 100644
+--- a/gcc/config/riscv/riscv.h
++++ b/gcc/config/riscv/riscv.h
+@@ -74,7 +74,6 @@ along with GCC; see the file COPYING3.  If not see
+ /* Extra switches sometimes passed to the linker.  */
+ #ifndef LINK_SPEC
+ #define LINK_SPEC "\
+-%{!T:-dT riscv.ld} \
+ %{mchip=*:--mchip=%*} \
+ %{march=*:--march=%*} \
+ %{mL2=*:--mL2=%*} \
+-- 
+2.17.1
+
