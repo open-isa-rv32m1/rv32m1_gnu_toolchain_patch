@@ -16,7 +16,7 @@ do
 
     echo "Apply RM32M1 patch in" $subfolder
     # Remove the older patch
-    rm ./$subfolder/*.patch
+    rm -f ./$subfolder/*.patch
     # Copy new patch
     cp rv32m1_patches/$subfolder/*.patch ./$subfolder/
     # Apply patch
